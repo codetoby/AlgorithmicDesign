@@ -16,126 +16,157 @@ public class Codelength {
         scanner.close();
         // Read in File Content
         File infile = new File(filename);
-        String text = Files.readString(infile.toPath(), Charset.defaultCharset());
+        String input = Files.readString(infile.toPath(), Charset.defaultCharset());
 
         // remove spacing and non alphabetical characters
-        text = text.replaceAll("[^A-Za-z]+", "").toLowerCase();
+        input = input.replaceAll("[^A-Za-z]+", "").toLowerCase();
+        input = addMissingCharacters(input);
 
-        text = addCharacters(text);
-        
-        int one = computeLength(text, 1);
-        int two = computeLength(text, 2);
-        int three = computeLength(text, 3);
+        int monographs = computeLength(input, 1);
+        int digraphs = computeLength(input, 2);
+        int trigraphs = computeLength(input, 3);
 
-        System.out.println(one + " " + two + " " + three);
+        System.out.println(monographs + " " + digraphs + " " + trigraphs);
 
     }
 
-    private static int computeLength(String text, int c) {
+    private static int computeLength(String input, int c) {
 
-        HashMap<String, Integer> frequencyTable = getFrequencyTable(text, c);
-        PriorityQueue<Node> queue = getPriorityQueue(frequencyTable);
+        HashMap<Substring, Integer> frequencyTable = createFrequencyTable(input, c);
+        PriorityQueue<HuffmanNode> priorityQueue = createPriorityQueue(frequencyTable);
 
-        Node root = getRoot(queue);
+        HuffmanNode tree = createHuffmanTree(priorityQueue);
 
-        HashMap<String, String> codes = new HashMap<>();
-        computeCodes(root, codes, "");
-        // System.out.println(codes);
+        HashMap<Substring, String> huffmanCodes = new HashMap<>();
+        computeHuffmanCodes(tree, huffmanCodes, "");
 
-        String encoded = getEncodedString(codes, text, c);
-        int length = encoded.length();
-        return length;
+        String encodedText = encodeText(huffmanCodes, input, c);
+        return encodedText.length();
+
     }
 
-    private static String getEncodedString(HashMap<String, String> codes, String text, int c) {
+    private static String encodeText(HashMap<Substring, String> codes, String input, int c) {
         StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < text.length(); i += c) {
-            String character = text.substring(i, i + c);
-            String code = codes.get(character);
+
+        int n = input.length();
+
+        for (int i = 0; i < n; i += c) {
+            Substring substring = new Substring(input.substring(i, i + c));
+            String code = codes.get(substring);
             builder.append(code);
         }
         return builder.toString();
 
     }
 
-    private static void computeCodes(Node root, HashMap<String, String> codes, String string) {
+    private static void computeHuffmanCodes(HuffmanNode root, HashMap<Substring, String> huffmanCodes,
+            String currentCode) {
         if (root == null) {
             return;
         }
         if (root.getLeft() == null && root.getRight() == null) {
-            codes.put(root.getLetter(), string);
+            huffmanCodes.put(root.getLetter(), currentCode);
             return;
         }
-        computeCodes(root.getLeft(), codes, string + "0");
-        computeCodes(root.getRight(), codes, string + "1");
+        computeHuffmanCodes(root.getLeft(), huffmanCodes, currentCode + "0");
+        computeHuffmanCodes(root.getRight(), huffmanCodes, currentCode + "1");
     }
 
-    private static Node getRoot(PriorityQueue<Node> queue) {
+    private static HuffmanNode createHuffmanTree(PriorityQueue<HuffmanNode> queue) {
 
         if (queue.size() == 1) {
-            Node node = queue.peek();
-            Node node1 = new Node(node.getValue());
-            node1.setLeft(node);
-            return node1;
+            HuffmanNode node = queue.poll();
+            HuffmanNode newNode = new HuffmanNode(node.getValue());
+            newNode.setLeft(node);
+            return newNode;
         }
 
         while (queue.size() > 1) {
-            Node node1 = queue.poll();
-            Node node2 = queue.poll();
-            Node newNode = new Node(node1.getValue() + node2.getValue());
-            newNode.setLeft(node1);
-            newNode.setRight(node2);
+            HuffmanNode left = queue.poll();
+            HuffmanNode right = queue.poll();
+            HuffmanNode newNode = new HuffmanNode(left.getValue() + right.getValue());
+            newNode.setLeft(left);
+            newNode.setRight(right);
             queue.add(newNode);
         }
+
         return queue.peek();
     }
 
-    private static PriorityQueue<Node> getPriorityQueue(HashMap<String, Integer> frequencyTable) {
-        PriorityQueue<Node> queue = new PriorityQueue<>();
-        for (String entry : frequencyTable.keySet()) {
-            Node node = new Node(frequencyTable.get(entry), entry);
-            queue.add(node);
+    private static PriorityQueue<HuffmanNode> createPriorityQueue(HashMap<Substring, Integer> frequencyTable) {
+        PriorityQueue<HuffmanNode> queue = new PriorityQueue<>();
+        for (Substring substring : frequencyTable.keySet()) {
+            queue.add(new HuffmanNode(substring, frequencyTable.get(substring)));
         }
         return queue;
     }
 
-    private static String addCharacters(String text) {
-        int remainLength = text.length() % 6;
-        if (remainLength != 0) {
-            remainLength = 6 - remainLength;
+    private static String addMissingCharacters(String input) {
+        int missing = input.length() % 6;
+        if (missing != 0) {
+            missing = 6 - missing;
         }
-        for (int i = 0; i < remainLength; i++) {
-            text += 'z';
+        for (int i = 0; i < missing; i++) {
+            input += 'z';
         }
-        return text;
+        return input;
     }
 
-    private static HashMap<String, Integer> getFrequencyTable(String text, int c) {
-        HashMap<String, Integer> frequency = new HashMap<>();
-        int n = text.length();
+    private static HashMap<Substring, Integer> createFrequencyTable(String input, int c) {
+        HashMap<Substring, Integer> frequencyTable = new HashMap<>();
+
+        int n = input.length();
+
         for (int i = 0; i < n; i += c) {
-            String subString = text.substring(i, i + c);
-            if (frequency.containsKey(subString)) {
-                frequency.put(subString, frequency.get(subString) + 1);
+            Substring subString = new Substring(input.substring(i, i + c));
+            if (frequencyTable.containsKey(subString)) {
+                frequencyTable.put(subString, frequencyTable.get(subString) + 1);
             } else {
-                frequency.put(subString, 1);
+                frequencyTable.put(subString, 1);
             }
         }
-        return frequency;
+        return frequencyTable;
     }
 }
 
-class Node implements Comparable<Node> {
-    private int value;
-    private String letter;
-    private Node right, left = null;
+class Substring {
+    
+    private String subString;
 
-    public Node(int value, String letter) {
+    public Substring(String subString) {
+        this.subString = subString;
+    }
+
+    public String getSubString() {
+        return subString;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Substring) {
+            Substring other = (Substring) obj;
+            return subString.equals(other.getSubString());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return subString.hashCode();
+    }
+}
+
+class HuffmanNode implements Comparable<HuffmanNode> {
+    private int value;
+    private Substring letter;
+    private HuffmanNode right, left = null;
+
+    public HuffmanNode(Substring letter, int value) {
         this.value = value;
         this.letter = letter;
     }
 
-    public Node(int value) {
+    public HuffmanNode(int value) {
         this.value = value;
     }
 
@@ -143,28 +174,28 @@ class Node implements Comparable<Node> {
         return value;
     }
 
-    public String getLetter() {
+    public Substring getLetter() {
         return letter;
     }
 
-    public void setRight(Node node) {
+    public void setRight(HuffmanNode node) {
         right = node;
     }
 
-    public void setLeft(Node node) {
+    public void setLeft(HuffmanNode node) {
         left = node;
     }
 
-    public Node getLeft() {
+    public HuffmanNode getLeft() {
         return left;
     }
 
-    public Node getRight() {
+    public HuffmanNode getRight() {
         return right;
     }
 
     @Override
-    public int compareTo(Node o) {
+    public int compareTo(HuffmanNode o) {
         return value - o.getValue();
     }
 
