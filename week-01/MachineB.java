@@ -51,14 +51,16 @@ public class MachineB {
         System.out.println(result.size());
     }
 
+    static class TaskEndTimeComparator implements Comparator<Task> {
+        @Override
+        public int compare(Task o1, Task o2) {
+            return o1.getEnd() - o2.getEnd();
+        }
+    }
+
 }
 
-class TaskEndTimeComparator implements Comparator<Task> {
-    @Override
-    public int compare(Task o1, Task o2) {
-        return o1.getEnd() - o2.getEnd();
-    }
-}
+
 
 
 // Represent a Task
