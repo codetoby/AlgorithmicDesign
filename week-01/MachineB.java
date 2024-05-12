@@ -9,7 +9,6 @@ import java.io.File;
 public class MachineB {
 
     public static void main(String[] args) throws IOException {
-        // File infile = new File("test1.txt");
         // Read in Filename
         Scanner scanner = new Scanner(System.in);
         String filename = scanner.nextLine();
