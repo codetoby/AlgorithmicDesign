@@ -6,7 +6,6 @@ import java.util.logging.Logger;
 
 public class Closed {
 
-
     private static final Logger logger = Logger.getLogger(Closed.class.getName());
 
     public static void main(String[] args) throws IOException {
@@ -31,16 +30,15 @@ public class Closed {
         tdep = input.nextInt();
 
         Set<Integer> towns = initilizeTowns(T);
-        Map<Integer, List<Road>> roadStructure = createRoadStructure(input, R);
+        Map<Integer, List<Road>> roadStructure = initilizeRoadStructure(input, R);
         Map<Integer, List<Closure>> closures = getClosures(input, C);
 
         input.close();
         scanner.close();
 
         if (logger.isLoggable(Level.INFO)) {
-            logger.info(Integer.toString(dijkstra(a, b, roadStructure, closures, tdep, towns)));
+            logger.info(Integer.toString(computeEarliestArrival(a, b, roadStructure, closures, tdep, towns)));
         }
-
     }
 
     private static Set<Integer> initilizeTowns(int T) {
@@ -64,23 +62,23 @@ public class Closed {
         return closures;
     }
 
-    private static Map<Integer, List<Road>> createRoadStructure(Scanner input, int R) {
-        Map<Integer, List<Road>> roadMap = new HashMap<>();
-        
+    private static Map<Integer, List<Road>> initilizeRoadStructure(Scanner input, int R) {
+        Map<Integer, List<Road>> roadStructure = new HashMap<>();
+
         for (int i = 0; i < R; i++) {
             int t1 = input.nextInt();
             int t2 = input.nextInt();
             int dur = input.nextInt();
-    
-            roadMap.putIfAbsent(t1, new ArrayList<>());
-            roadMap.putIfAbsent(t2, new ArrayList<>());
-            roadMap.get(t1).add(new Road(t1, t2, dur, i + 1));
-            roadMap.get(t2).add(new Road(t2, t1, dur, i + 1));
+
+            roadStructure.putIfAbsent(t1, new ArrayList<>());
+            roadStructure.putIfAbsent(t2, new ArrayList<>());
+            roadStructure.get(t1).add(new Road(i + 1, t1, t2, dur));
+            roadStructure.get(t2).add(new Road(i + 1, t2, t1, dur));
         }
-        return roadMap;
+        return roadStructure;
     }
 
-    private static int dijkstra(int a, int b, Map<Integer, List<Road>> roads,
+    private static int computeEarliestArrival(int a, int b, Map<Integer, List<Road>> roads,
             Map<Integer, List<Closure>> closures, int tdep, Set<Integer> towns) {
 
         Map<Integer, Integer> distance = new HashMap<>();
@@ -101,20 +99,18 @@ public class Closed {
             List<Road> roadsFromTown = roads.get(town);
             for (Road road : roadsFromTown) {
                 int time = distance.get(town);
-                time = computeTime(closures, road, time);
+                time = computeNextDeparuteTime(closures, road, time);
                 if (time + road.dur < distance.get(road.t2)) {
                     distance.put(road.t2, time + road.dur);
                     queue.add(road.t2);
                 }
             }
-            
-            
-        }
 
+        }
         return distance.get(b) == Integer.MAX_VALUE ? 0 : distance.get(b);
     }
 
-    private static int computeTime(Map<Integer, List<Closure>> closures, Road road, int time) {
+    private static int computeNextDeparuteTime(Map<Integer, List<Closure>> closures, Road road, int time) {
         if (closures.containsKey(road.id)) {
             List<Closure> closuresFromRoad = closures.get(road.id);
             Collections.sort(closuresFromRoad);
@@ -122,13 +118,8 @@ public class Closed {
                 if (isBeforeClosureStart(time, road, closure)) {
                     break;
                 }
-                if (isWithinClosure(time, road, closure)) {
-                    time = closure.end;
-                }
-                if (isAfterClosureStart(time, road, closure)) {
-                    time = closure.end;
-                }
-                if (isDuringClosure(time, road, closure)) {
+                if (isWithinClosure(time, road, closure) || isBeforClosureAndAfterOrBeforClosureEnd(time, road, closure)
+                        || isDuringClosure(time, road, closure)) {
                     time = closure.end;
                 }
             }
@@ -144,7 +135,7 @@ public class Closed {
         return time + road.dur >= closure.start && time + road.dur <= closure.end;
     }
 
-    private static boolean isAfterClosureStart(int time, Road road, Closure closure) {
+    private static boolean isBeforClosureAndAfterOrBeforClosureEnd(int time, Road road, Closure closure) {
         return time <= closure.start && (time + road.dur >= closure.end || time + road.dur <= closure.end);
     }
 
@@ -153,21 +144,21 @@ public class Closed {
     }
 
     static class Road {
+        int id;
         int t1;
         int t2;
         int dur;
-        int id;
 
-        public Road(int t1, int t2, int dur, int id) {
+        public Road(int id, int t1, int t2, int dur) {
+            this.id = id;
             this.t1 = t1;
             this.t2 = t2;
             this.dur = dur;
-            this.id = id;
-
         }
+
         @Override
         public String toString() {
-            return "Road [dur=" + dur + ", id=" + id + ", t1=" + t1 + ", t2=" + t2 + "]";
+            return "Road [ID=" + id + ", From=" + t1 + ", To=" + t2 + ", Duration=" + dur + "]";
         }
     }
 
@@ -179,7 +170,7 @@ public class Closed {
         public Closure(int road, int start, int end) {
             this.road = road;
             this.start = start;
-            this.end= end;
+            this.end = end;
         }
 
         @Override
